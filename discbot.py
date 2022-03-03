@@ -3,51 +3,19 @@ import sys
 import discord
 import pafy
 import asyncio
-import ctypes
-import ctypes.util
 from asgiref.sync import async_to_sync
 from discord.ext import commands
 from config import FFMPEG_OPTIONS, TOKEN
 from ctnrs import song_dict, counter
 from search_yt import yt_query, YT_API_KEY, get_vid_name
-FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+# FFMPEG_OPTIONS = {
+#     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
 
 # BOT
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='--')
-# discord.opus.load_opus('libopus-0.0.17.dll')  # 'libopus-0.0.17.dll'
-'''
-If you are getting this Python error (excerpt) with discord.py:
- 
-raise OpusNotLoaded()
-discord.opus.OpusNotLoaded
- 
-Solve it by adding this in your script:
-'''
-
-# print("ctypes - Find opus:")
-# a = ctypes.util.find_library('opus')
-# print(a)
-
-# print("Discord - Load Opus:")
-# b = discord.opus.load_opus(a)
-# print(b)
-
-# print("Discord - Is loaded:")
-# c = discord.opus.is_loaded()
-# print(c)
-
-
-# if not discord.opus.is_loaded():
-#     #     # the 'opus' library here is opus.dll on windows
-#     #     # or libopus.so on linux in the current directory
-#     #     # you should replace this with the location the
-#     #     # opus library is located in and with the proper filename.
-#     #     # note that on windows this DLL is automatically provided for you
-# discord.opus.load_opus()
 
 
 def restart_bot():
@@ -149,16 +117,19 @@ async def play_next(ctx, msg=None):
     await asyncio.sleep(2)
     voice_client = ctx.message.guild.voice_client
     # voice_channel.stop()
-    counter['count'] += 1
-
-    try:
-        song = song_dict[counter['count']]
-    except KeyError:
+    if counter['count'] != len(song_dict) + 1:
+        counter['count'] += 1
+    else:
         await ctx.send('End of List! Use --play to add more songs.')
-        song_dict.clear()
-        await msg.delete()
-        counter['count'] = 0
         return
+    song = song_dict[counter['count']]
+    # try:
+    #     song = song_dict[counter['count']]
+    # except KeyError:
+    #     song_dict.clear()
+    #     await msg.delete()
+    #     counter['count'] = 0
+    #     return
     if msg:
         await msg.delete()
     voice_client.pause()
@@ -168,6 +139,32 @@ async def play_next(ctx, msg=None):
     voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
         play_next(ctx, msg=msg), bot.loop))
     # play_next(ctx, msg=msg)
+    # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
+    # await asyncio.sleep(2)
+
+
+@bot.command(name='back', help='Previous song!')
+async def play_prev(ctx, msg=None):
+    await asyncio.sleep(2)
+    voice_client = ctx.message.guild.voice_client
+    # voice_channel.stop()
+    if counter['count'] != 0:
+        counter['count'] -= 1
+    else:
+        await ctx.send('This is the first song in the list!')
+        return
+    try:
+        song = song_dict[counter['count']]
+    except:
+        print('Error, maybe do ExceptKeyError?')
+    if msg:
+        await msg.delete()
+    voice_client.pause()
+    source = discord.FFmpegPCMAudio(
+        song['url'], **FFMPEG_OPTIONS)  # executable="./ffmpeg.exe",
+    msg = await ctx.send('**Now playing:** {}'.format(song['title']))
+    voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
+        play_next(ctx, msg=msg), bot.loop))
     # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
     # await asyncio.sleep(2)
 
