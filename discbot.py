@@ -117,7 +117,7 @@ async def play_next(ctx, msg=None):
     await asyncio.sleep(2)
     voice_client = ctx.message.guild.voice_client
     # voice_channel.stop()
-    if counter['count'] != len(song_dict) + 1:
+    if counter['count'] != len(song_dict)-1:
         counter['count'] += 1
     else:
         await ctx.send('End of List! Use --play to add more songs.')
