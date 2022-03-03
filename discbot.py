@@ -3,10 +3,12 @@ import sys
 import discord
 import pafy
 import asyncio
+import getreddit
+import json
 from asgiref.sync import async_to_sync
 from discord.ext import commands
 from config import FFMPEG_OPTIONS, TOKEN
-from ctnrs import song_dict, counter
+from ctnrs import counter  # song_dict
 from search_yt import yt_query, YT_API_KEY, get_vid_name
 # FFMPEG_OPTIONS = {
 #     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
@@ -16,6 +18,7 @@ from search_yt import yt_query, YT_API_KEY, get_vid_name
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='--')
+song_dict = dict()
 
 
 def restart_bot():
@@ -70,26 +73,41 @@ async def leave(ctx):
         await ctx.send("The bot is not connected to a voice channel.")
 
 
-@bot.command(name='play', help='To play song, [command_prefix]play [song name]')
-async def play(ctx, *terms):
+@bot.command(name='rlist', help='[cmd][sub]')
+async def rlist(ctx, subreddit):
+    data = getreddit.post_data(subreddit, '100')
+    filtered_data = getreddit.filter_data(data, criteria='youtu')
+    print(json.loads(filtered_data))
+    # song_dict.update(json.loads(getreddit.filter_data(
+    #     getreddit.post_data(*subreddit, '100')), criteria='youtu'))
+    print(song_dict)
+    await play(ctx, main=False)
+
+
+@ bot.command(name='play', help='To play song, [command_prefix]play [song name]')
+async def play(ctx, *terms, main=True):
 
     try:
         await author_in_voice(ctx)
     except:
         return
 
-    print(*terms)
-
     voice_client = ctx.message.guild.voice_client
 
     async with ctx.typing():
 
         # Get & Load YouTube Song
-        url = await yt_query(YT_API_KEY, *terms)
-        song = pafy.new(url).getbestaudio()
+        if main:
+            print(*terms)
+            url = await yt_query(YT_API_KEY, *terms)
+            song = pafy.new(url).getbestaudio()
+            song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
 
-        # add song to end of dict
-        song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
+            # add song to end of dict
+        else:
+            url = song_dict[counter['counter']]['url']
+            song = pafy.new(url).getbestaudio()
+            # song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
 
         try:
             # voice_client.is_playing()
@@ -112,7 +130,7 @@ async def play(ctx, *terms):
         # play_next(ctx, msg=msg)
 
 
-@bot.command(name='next', help='Next song!')
+@ bot.command(name='next', help='Next song!')
 async def play_next(ctx, msg=None, bot_action=None):
     # await asyncio.sleep(4)
     voice_client = ctx.message.guild.voice_client
@@ -145,7 +163,7 @@ async def play_next(ctx, msg=None, bot_action=None):
     # await asyncio.sleep(2)
 
 
-@bot.command(name='back', help='Previous song!')
+@ bot.command(name='back', help='Previous song!')
 async def play_prev(ctx, msg=None):
     await asyncio.sleep(2)
     voice_client = ctx.message.guild.voice_client
@@ -171,7 +189,7 @@ async def play_prev(ctx, msg=None):
     # await asyncio.sleep(2)
 
 
-@bot.command(name='pause', help='This command pauses the song')
+@ bot.command(name='pause', help='This command pauses the song')
 async def pause(ctx):
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_playing():
@@ -180,7 +198,7 @@ async def pause(ctx):
         await ctx.send("The bot is not playing anything at the moment.")
 
 
-@bot.command(name='resume', help='Resumes the song')
+@ bot.command(name='resume', help='Resumes the song')
 async def resume(ctx):
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_paused():
@@ -189,7 +207,7 @@ async def resume(ctx):
         await ctx.send("The bot was not playing anything before this. Use play_song command")
 
 
-@bot.command(name='stop', help='Stops the song')
+@ bot.command(name='stop', help='Stops the song')
 async def stop(ctx):
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_playing():
