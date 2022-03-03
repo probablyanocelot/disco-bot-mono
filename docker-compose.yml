@@ -1,0 +1,11 @@
+version: '4.4.4'
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: 'python discbot.py'
+    ports:
+      - "5001:5000"
+    volumes:
+      - .:/app
