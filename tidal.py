@@ -1,51 +1,112 @@
-# pipenv install -e git+https://github.com/tamland/python-tidal.git@0.7.x#egg=tidalapi
+import requests
+import pytest
 import tidalapi
-import os
-
-# 0.7.x
-session = tidalapi.Session()
-# Will run until you visit the printed url and link your account
-
-session_id = session.session_id
-token_type = session.token_type
-access_token = session.access_token
-refresh_token = session.refresh_token
+from tidalapi import Artist, Album, Playlist, Track, Video
 
 
-async def login():
-    try:
-        session.load_oauth_session(
-            session_id, token_type, access_token, refresh_token)
-        print('we made it!')
-    except tidalapi.TidalError as e:
+class TestSession(tidalapi.Session):
+    def __init__(self):
+        super().__init__(self.__dict__)
+
+        try:
+            test_load_oauth_session(self)
+            print(1)
+        except:
+            self.test_oauth_login_simple()
+            print(2)
+
+    def test_load_oauth_session(self, session):
+        session_id = session.session_id
+        token_type = session.token_type
+        access_token = session.access_token
+        session = tidalapi.Session()
+        assert session.load_oauth_session(session_id, token_type, access_token)
+        assert session.check_login()
+        assert isinstance(session.user, tidalapi.LoggedInUser)
+        assert session.load_oauth_session(
+            session_id + "f", token_type, access_token) is False
+
+    def test_failed_login(self):
+        session = tidalapi.Session()
+        with pytest.raises(requests.HTTPError):
+            session.login("", "")
+        assert session.check_login() is False
+
+    def test_oauth_login(self):
+        config = tidalapi.Config(item_limit=20000)
+        session = tidalapi.Session(config)
+        login, future = session.login_oauth()
+        print("Visit", login.verification_uri_complete,
+              "to log in, the link expires in", login.expires_in, "seconds")
+        future.result()
+        assert session.check_login()
+        assert session.config.item_limit == 10000
+
+    def test_failed_oauth_login(self, session):
+        client_id = session.config.client_id
+        config = tidalapi.Config()
+        config.client_id = client_id + 's'
+        session = tidalapi.Session(config)
+        with pytest.raises(requests.HTTPError):
+            session.login_oauth()
+
+    def test_oauth_login_simple(self):
+        session = tidalapi.Session()
         session.login_oauth_simple()
 
-    # playlist = session.playlist('4261748a-4287-4758-aaab-6d5be3e99e52')
-    # session.login('username', 'password') # for 0.6.x
-    # tracks = session.get_album_tracks(album_id=16909093)
-    # for track in tracks:
-    # print(track.name)
+    def test_oauth_refresh(self, session):
+        access_token = session.access_token
+        expiry_time = session.expiry_time
+        refresh_token = session.refresh_token
+        session.token_refresh(refresh_token)
+        assert session.access_token != access_token
+        assert session.expiry_time != expiry_time
+
+    def test_search(self, session):
+        # Great edge case test
+        search = session.search("Walker", limit=300)
+        assert len(search['artists']) == 300
+        assert len(search['albums']) == 300
+        assert len(search['tracks']) == 300
+        assert len(search['videos']) == 300
+        assert len(search['playlists']) >= 195
+        assert isinstance(search['artists'][0], Artist)
+        assert isinstance(search['albums'][0], Album)
+        assert isinstance(search['tracks'][0], Track)
+        assert isinstance(search['videos'][0], Video)
+        assert isinstance(search['playlists'][0], Playlist)
+
+        assert (search['top_hit']).name == "Alan Walker"
+
+    def test_type_search(self, session):
+        search = session.search("Hello", [Playlist, Video])
+        assert isinstance(search['top_hit'], Playlist)
+
+        assert len(search['artists']) == 0
+        assert len(search['albums']) == 0
+        assert len(search['tracks']) == 0
+        assert len(search['videos']) == 50
+        assert len(search['playlists']) == 50
+
+    def test_invalid_type_search(self, session):
+        with pytest.raises(ValueError):
+            session.search("Hello", [tidalapi.Genre])
+
+    def test_invalid_search(self, session):
+        search = session.search('ERIWGJRGIJGRWEIOGRJOGREIWJIOWREG')
+        assert len(search['artists']) == 0
+        assert len(search['albums']) == 0
+        assert len(search['tracks']) == 0
+        assert len(search['videos']) == 0
+        assert len(search['playlists']) == 0
+        assert search['top_hit'] is None
+
+    def test_config(self, session):
+        assert session.config.item_limit == 1000
+        assert session.config.quality == tidalapi.Quality.master.value
+        assert session.config.video_quality == tidalapi.VideoQuality.high.value
+        assert session.config.alac is True
 
 
-def get_playlist(playlist_id):
-    playlist = session.playlist(playlist_id)
-    return playlist
-
-
-def get_tracks(playlist):
-    tracks = playlist.tracks()
-    for track in tracks:
-        print(track.name)
-    # print(tracks)
-    print(tracks[0].get_url())
-
-
-# get_tracks(playlist)
-
-'''http://ab-pr-cf.audio.tidal.com/4cacf116a17313d6496d33e67a40342f_37.mp4 /
-?Expires=1642245527&Signature=UC~bJ2lKQmFqbn8K~uR29e9v9MAO51RCfqquvNQAjC /
-~sgOBSN325u8APTvunMZizGLNYtH0HFsOzAn-bKhJfutTPsRBrgYdSYt8kGGABEMqV-qmzADrF /
-~eWYkTxMCJhfa9ryZLxWMYPHCyYxn6Ok7Ura5ZT-KfuoegDT3~6OShNyR7GIAMC3MgbfB5iOK~ /
-jErdP9rGduvUjAVb-h0xc0FJEGknGa3HUEtndzhvqH72lecwIPO12KM6j~wiS3N61 /
-~VuPQ2zy9rFL8299o09995kiCZBDW3OLGYC3LwxmcCPZp9fabEBvNWnf2V4u0JwtfvQR0cf0uZ9XUqBTim2sPIw__ /
-&Key-Pair-Id=APKAIZ3WPBE4R6SP555A'''
+if __name__ == '__main__':
+    session = TestSession()

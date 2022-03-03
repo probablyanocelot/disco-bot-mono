@@ -1,5 +1,4 @@
 requests
-json
 # psycopg2
 discord.py
 pafy
@@ -9,4 +8,4 @@ youtube-dl
 asgiref
 pynacl
 opuslib==3.0.1
-git+https://github.com/tamland/python-tidal@0.7.x#egg=tidal
+git+https://github.com/tamland/python-tidal@0.7.x#egg=tidalapi
