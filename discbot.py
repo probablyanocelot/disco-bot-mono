@@ -107,29 +107,31 @@ async def play(ctx, *terms):
 
         msg = await ctx.send('**Now playing:** {}'.format(song['title']))
         voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
-            play_next(ctx, msg=msg), bot.loop))
+            play_next(ctx, msg=msg, bot_action=True), bot.loop))
         # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
         # play_next(ctx, msg=msg)
 
 
 @bot.command(name='next', help='Next song!')
-async def play_next(ctx, msg=None):
-    await asyncio.sleep(2)
+async def play_next(ctx, msg=None, bot_action=None):
+    # await asyncio.sleep(4)
     voice_client = ctx.message.guild.voice_client
     # voice_channel.stop()
-    if counter['count'] != len(song_dict)-1:
+    try:
+        song_dict[counter['count'] + 1]
         counter['count'] += 1
-    else:
-        await ctx.send('End of List! Use --play to add more songs.')
-        return
-    song = song_dict[counter['count']]
-    # try:
-    #     song = song_dict[counter['count']]
-    # except KeyError:
-    #     song_dict.clear()
-    #     await msg.delete()
-    #     counter['count'] = 0
-    #     return
+        song = song_dict[counter['count']]
+    except KeyError:
+        if bot_action is None:
+            await ctx.send('End of List! Use --play to add more songs..')
+            return
+        else:
+            await asyncio.sleep(2)
+            song_dict.clear()
+            await msg.delete()
+            counter['count'] = 0
+            return
+
     if msg:
         await msg.delete()
     voice_client.pause()
@@ -137,7 +139,7 @@ async def play_next(ctx, msg=None):
         song['url'], **FFMPEG_OPTIONS)  # executable="./ffmpeg.exe",
     msg = await ctx.send('**Now playing:** {}'.format(song['title']))
     voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
-        play_next(ctx, msg=msg), bot.loop))
+        play_next(ctx, msg=msg, bot_action=True), bot.loop))
     # play_next(ctx, msg=msg)
     # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
     # await asyncio.sleep(2)
