@@ -109,12 +109,6 @@ async def play(ctx, *terms, main=True):
             print(*terms)
             url = await yt_query(YT_API_KEY, *terms)
             song = pafy.new(url).getbestaudio()
-            try:
-                song_dict[len(song_dict)] = {
-                    'title': song.title, 'url': song.url}
-            except AttributeError:
-                await ctx.send('No song found.')
-                return
 
             # add song to end of dict
         else:
@@ -132,7 +126,7 @@ async def play(ctx, *terms, main=True):
             return
 
         try:
-            song_dict[counter['count']] = {
+            song_dict[len(song_dict)] = {
                 'title': song.title, 'url': song.url}
         except AttributeError:
             await ctx.send('No song found.')
@@ -163,7 +157,9 @@ async def play_next(ctx, msg=None, bot_action=None):
         song = song_dict[counter['count']]
 
         if len(song['url']) < 100:
-            song['url'] = pafy.new(song['url']).getbestaudio().url
+            song_pafy = pafy.new(song['url']).getbestaudio()
+            song['url'] = song_pafy.url
+            song['title'] = song_pafy.title
 
     except KeyError:
         if bot_action is None:
