@@ -21,6 +21,13 @@ bot = commands.Bot(command_prefix='--')
 song_dict = dict()
 
 
+"""
+################################################################################
+#                            --- SUPPORT FUNCTIONS ---                         #
+################################################################################
+"""
+
+
 @bot.command(name='res', help="Restart the bot")
 async def restart(ctx):
     await ctx.send("Bot Restarted.")  # actually not yet
@@ -53,13 +60,11 @@ async def author_in_voice(ctx):
         else:
             await channel.connect()
 
-
-async def player(ctx, stream_url, stream_title):
-    source = discord.FFmpegPCMAudio(
-        stream_url, **FFMPEG_OPTIONS)
-    msg = await ctx.send('**Now playing:** {}'.format(stream_title))
-    voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
-        play_next(ctx, msg=msg, bot_action=True), bot.loop))
+"""
+################################################################################
+#                          --- SIMPLE BOT COMMANDS ---                         #
+################################################################################
+"""
 
 
 @bot.command(name='join', help='Tells the bot to join the voice channel')
@@ -81,6 +86,43 @@ async def leave(ctx):
         await ctx.send("The bot is not connected to a voice channel.")
 
 
+@ bot.command(name='pause', help='This command pauses the song')
+async def pause(ctx, by_user=True):
+    voice_client = ctx.message.guild.voice_client
+    if voice_client.is_playing():
+        await voice_client.pause()
+    else:
+        if by_user:
+            await ctx.send("The bot is not playing anything at the moment.")
+        return
+
+
+@ bot.command(name='resume', help='Resumes the song')
+async def resume(ctx):
+    voice_client = ctx.message.guild.voice_client
+    if voice_client.is_paused():
+        await voice_client.resume()
+    else:
+        await ctx.send("The bot was not playing anything before this. Use play_song command")
+
+
+@ bot.command(name='stop', help='Stops the song')
+async def stop(ctx):
+    voice_client = ctx.message.guild.voice_client
+    if voice_client.is_playing():
+        song_dict.clear()
+        voice_client.stop()
+    else:
+        await ctx.send("The bot is not playing anything at the moment.")
+
+
+"""
+################################################################################
+#                          --- PLAYER FUNCTIONS ---                            #
+################################################################################
+"""
+
+
 @bot.command(name='rlist', help='[cmd][sub]')
 async def rlist(ctx, subreddit):
     data = getreddit.post_data(subreddit, '100')
@@ -95,12 +137,25 @@ async def rlist(ctx, subreddit):
     # song_dict.update(json.loads(getreddit.filter_data(
     #     getreddit.post_data(*subreddit, '100')), criteria='youtu'))
     print(song_dict)
-    await play(ctx, main=False)
+    await play(ctx, by_user=False)
 
 
-# DO DRYS, MAKE MODULAR!!!
+async def player(ctx, stream_url, stream_title):
+    voice_client = ctx.message.guild.voice_client
+    try:
+        if voice_client.is_playing():
+            voice_client.pause()
+    except:
+        pass
+    source = discord.FFmpegPCMAudio(
+        stream_url, **FFMPEG_OPTIONS)
+    msg = await ctx.send('**Now playing:** {}'.format(stream_title))
+    voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
+        play_next(ctx, msg=msg, bot_action=True), bot.loop))
+
+
 @ bot.command(name='play', help='To play song, [command_prefix]play [song name]')
-async def play(ctx, *terms, main=True):
+async def play(ctx, *terms, by_user=True):
     await asyncio.sleep(1)
 
     try:
@@ -113,13 +168,12 @@ async def play(ctx, *terms, main=True):
     async with ctx.typing():
 
         # if called by user: url from yt query. else: url from dict
-        if main:
+        if by_user:
             print(*terms)
             try:
                 url = await yt_query(YT_API_KEY, *terms)
             except:
-                if main:
-                    await ctx.send("No results found for {}".format(*terms))
+                await ctx.send("No results found for {}".format(*terms))
                 return
 
         else:
@@ -128,7 +182,7 @@ async def play(ctx, *terms, main=True):
         try:
             song = pafy.new(url).getbestaudio()
         except:
-            if main:
+            if by_user:
                 await ctx.send("Cannot get streaming data for {}".format(*terms))
             return
 
@@ -181,15 +235,13 @@ async def play_next(ctx, msg=None, bot_action=None):
 
     if msg:
         await msg.delete()
-    voice_client.pause()
-    source = discord.FFmpegPCMAudio(
-        song['url'], **FFMPEG_OPTIONS)  # executable="./ffmpeg.exe",
-    msg = await ctx.send('**Now playing:** {}'.format(song['title']))
-    voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
-        play_next(ctx, msg=msg, bot_action=True), bot.loop))
-    # play_next(ctx, msg=msg)
-    # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
-    # await asyncio.sleep(2)
+    await player(ctx, song['url'], song['title'])
+    # voice_client.pause()
+    # source = discord.FFmpegPCMAudio(
+    #     song['url'], **FFMPEG_OPTIONS)  # executable="./ffmpeg.exe",
+    # msg = await ctx.send('**Now playing:** {}'.format(song['title']))
+    # voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
+    #     play_next(ctx, msg=msg, bot_action=True), bot.loop))
 
 
 @ bot.command(name='back', help='Previous song!')
@@ -208,42 +260,15 @@ async def play_prev(ctx, msg=None):
         print('Error, maybe do ExceptKeyError?')
     if msg:
         await msg.delete()
-    voice_client.pause()
-    source = discord.FFmpegPCMAudio(
-        song['url'], **FFMPEG_OPTIONS)  # executable="./ffmpeg.exe",
-    msg = await ctx.send('**Now playing:** {}'.format(song['title']))
-    voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
-        play_next(ctx, msg=msg), bot.loop))
+    await player(ctx, song['url'], song['title'])
+    # voice_client.pause()
+    # source = discord.FFmpegPCMAudio(
+    #     song['url'], **FFMPEG_OPTIONS)  # executable="./ffmpeg.exe",
+    # msg = await ctx.send('**Now playing:** {}'.format(song['title']))
+    # voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
+    #     play_next(ctx, msg=msg), bot.loop))
     # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
     # await asyncio.sleep(2)
-
-
-@ bot.command(name='pause', help='This command pauses the song')
-async def pause(ctx):
-    voice_client = ctx.message.guild.voice_client
-    if voice_client.is_playing():
-        await voice_client.pause()
-    else:
-        await ctx.send("The bot is not playing anything at the moment.")
-
-
-@ bot.command(name='resume', help='Resumes the song')
-async def resume(ctx):
-    voice_client = ctx.message.guild.voice_client
-    if voice_client.is_paused():
-        await voice_client.resume()
-    else:
-        await ctx.send("The bot was not playing anything before this. Use play_song command")
-
-
-@ bot.command(name='stop', help='Stops the song')
-async def stop(ctx):
-    voice_client = ctx.message.guild.voice_client
-    if voice_client.is_playing():
-        song_dict.clear()
-        voice_client.stop()
-    else:
-        await ctx.send("The bot is not playing anything at the moment.")
 
 
 bot.run(TOKEN)
