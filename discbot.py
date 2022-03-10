@@ -101,7 +101,12 @@ async def play(ctx, *terms, main=True):
             print(*terms)
             url = await yt_query(YT_API_KEY, *terms)
             song = pafy.new(url).getbestaudio()
-            song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
+            try:
+                song_dict[len(song_dict)] = {
+                    'title': song.title, 'url': song.url}
+            except AttributeError:
+                await ctx.send('No song found.')
+                return
 
             # add song to end of dict
         else:
