@@ -76,16 +76,24 @@ async def leave(ctx):
 @bot.command(name='rlist', help='[cmd][sub]')
 async def rlist(ctx, subreddit):
     data = getreddit.post_data(subreddit, '100')
-    filtered_data = getreddit.filter_data(data, criteria='youtu')
-    print(json.loads(filtered_data))
+    filtered_data = json.loads(getreddit.filter_data(data, criteria='youtu'))
+    # if len(song_dict) > 0:
+    for song in filtered_data:
+        # print(song)
+        song_dict[len(song_dict)] = {
+            'title': filtered_data[song]['title'], 'url': filtered_data[song]['url']}
+    # else:
+
     # song_dict.update(json.loads(getreddit.filter_data(
     #     getreddit.post_data(*subreddit, '100')), criteria='youtu'))
     print(song_dict)
     await play(ctx, main=False)
 
 
+# DO DRYS, MAKE MODULAR!!!
 @ bot.command(name='play', help='To play song, [command_prefix]play [song name]')
 async def play(ctx, *terms, main=True):
+    await asyncio.sleep(1)
 
     try:
         await author_in_voice(ctx)
@@ -110,8 +118,9 @@ async def play(ctx, *terms, main=True):
 
             # add song to end of dict
         else:
-            url = song_dict[counter['counter']]['url']
+            url = song_dict[counter['count']]['url']
             song = pafy.new(url).getbestaudio()
+
             # song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
 
         try:
@@ -122,8 +131,16 @@ async def play(ctx, *terms, main=True):
         except AttributeError:
             return
 
+        try:
+            song_dict[counter['count']] = {
+                'title': song.title, 'url': song.url}
+        except AttributeError:
+            await ctx.send('No song found.')
+            return
+
         song = song_dict[counter['count']]
         # print(song)
+        print(song_dict)
 
         source = discord.FFmpegPCMAudio(
             song['url'], **FFMPEG_OPTIONS)
@@ -137,13 +154,17 @@ async def play(ctx, *terms, main=True):
 
 @ bot.command(name='next', help='Next song!')
 async def play_next(ctx, msg=None, bot_action=None):
-    # await asyncio.sleep(4)
+    await asyncio.sleep(2)
     voice_client = ctx.message.guild.voice_client
     # voice_channel.stop()
     try:
         song_dict[counter['count'] + 1]
         counter['count'] += 1
         song = song_dict[counter['count']]
+
+        if len(song['url']) < 100:
+            song['url'] = pafy.new(song['url']).getbestaudio().url
+
     except KeyError:
         if bot_action is None:
             await ctx.send('End of List! Use --play to add more songs..')

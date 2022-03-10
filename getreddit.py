@@ -25,11 +25,12 @@ def filter_data(data, criteria=None):
     counter = 0
     for item in data:
         if criteria in item['url']:
-            mydict[counter] = {
-                'title': item['title'],
-                'url': item['url'],
-            }
-            counter += 1
+            if not 'shorts' in item['url']:
+                mydict[counter] = {
+                    'title': item['title'],
+                    'url': item['url'],
+                }
+                counter += 1
         #     mydict[counter] = {
         #         'title': data[item]['title'],
         #         'url': data[item]['url'],
