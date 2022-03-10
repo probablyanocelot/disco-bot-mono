@@ -112,8 +112,7 @@ async def play(ctx, *terms, main=True):
             url = song_dict[counter['count']]['url']
 
         song = pafy.new(url).getbestaudio()
-
-        # song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
+        song_dict[len(song_dict)] = {'title': song.title, 'url': url}
 
         try:
             # voice_client.is_playing()
@@ -136,10 +135,10 @@ async def play(ctx, *terms, main=True):
 
         source = discord.FFmpegPCMAudio(
             song['url'], **FFMPEG_OPTIONS)
-
         msg = await ctx.send('**Now playing:** {}'.format(song['title']))
         voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
             play_next(ctx, msg=msg, bot_action=True), bot.loop))
+
         # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
         # play_next(ctx, msg=msg)
 
