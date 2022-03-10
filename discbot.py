@@ -108,14 +108,12 @@ async def play(ctx, *terms, main=True):
         if main:
             print(*terms)
             url = await yt_query(YT_API_KEY, *terms)
-            song = pafy.new(url).getbestaudio()
-
-            # add song to end of dict
         else:
             url = song_dict[counter['count']]['url']
-            song = pafy.new(url).getbestaudio()
 
-            # song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
+        song = pafy.new(url).getbestaudio()
+
+        # song_dict[len(song_dict)] = {'title': song.title, 'url': song.url}
 
         try:
             # voice_client.is_playing()
