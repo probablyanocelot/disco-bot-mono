@@ -21,6 +21,12 @@ bot = commands.Bot(command_prefix='--')
 song_dict = dict()
 
 
+@bot.command(name='res', help="Restart the bot")
+async def restart(ctx):
+    await ctx.send("Bot Restarted.")  # actually not yet
+    restart_bot()
+
+
 def restart_bot():
     '''Restarts the bot.'''
     os.execv(sys.executable, ['python'] + sys.argv)
@@ -48,10 +54,12 @@ async def author_in_voice(ctx):
             await channel.connect()
 
 
-@bot.command(name='res', help="Restart the bot")
-async def restart(ctx):
-    await ctx.send("Bot Restarted.")  # actually not yet
-    restart_bot()
+async def player(ctx, stream_url, stream_title):
+    source = discord.FFmpegPCMAudio(
+        stream_url, **FFMPEG_OPTIONS)
+    msg = await ctx.send('**Now playing:** {}'.format(stream_title))
+    voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
+        play_next(ctx, msg=msg, bot_action=True), bot.loop))
 
 
 @bot.command(name='join', help='Tells the bot to join the voice channel')
@@ -104,18 +112,29 @@ async def play(ctx, *terms, main=True):
 
     async with ctx.typing():
 
-        # Get & Load YouTube Song
+        # if called by user: url from yt query. else: url from dict
         if main:
             print(*terms)
-            url = await yt_query(YT_API_KEY, *terms)
+            try:
+                url = await yt_query(YT_API_KEY, *terms)
+            except:
+                if main:
+                    await ctx.send("No results found for {}".format(*terms))
+                return
+
         else:
             url = song_dict[counter['count']]['url']
 
-        song = pafy.new(url).getbestaudio()
+        try:
+            song = pafy.new(url).getbestaudio()
+        except:
+            if main:
+                await ctx.send("Cannot get streaming data for {}".format(*terms))
+            return
+
         song_dict[len(song_dict)] = {'title': song.title, 'url': url}
 
         try:
-            # voice_client.is_playing()
             if voice_client.is_playing():
                 await ctx.send('**Queued:** {}'.format(song.title))
                 return
@@ -124,23 +143,14 @@ async def play(ctx, *terms, main=True):
 
         try:
             song_dict[len(song_dict)] = {
-                'title': song.title, 'url': song.url}
+                'title': song.title, 'url': url}
         except AttributeError:
             await ctx.send('No song found.')
             return
 
         song = song_dict[counter['count']]
-        # print(song)
         print(song_dict)
-
-        source = discord.FFmpegPCMAudio(
-            song['url'], **FFMPEG_OPTIONS)
-        msg = await ctx.send('**Now playing:** {}'.format(song['title']))
-        voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(
-            play_next(ctx, msg=msg, bot_action=True), bot.loop))
-
-        # asyncio.run_coroutine_threadsafe(play_next(ctx, msg=msg), bot.loop)
-        # play_next(ctx, msg=msg)
+        await player(ctx, song['url'], song['title'])
 
 
 @ bot.command(name='next', help='Next song!')
