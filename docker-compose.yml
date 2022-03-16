@@ -4,8 +4,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: 'python discbot.py'
+    command: "python discbot.py"
     ports:
-      - "5001:5000"
+      - "50050:5000"
     volumes:
       - .:/app
