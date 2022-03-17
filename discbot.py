@@ -15,7 +15,7 @@ from search_yt import yt_query, YT_API_KEY, get_vid_name
 # BOT
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
-bot = commands.Bot(command_prefix='--')
+bot = commands.Bot(command_prefix='$')
 song_dict = dict()
 
 
@@ -121,9 +121,10 @@ async def resume(ctx):
 
 @bot.command(name='stop', help='Stops the song')
 async def stop(ctx):
+    guild_dict = await get_guild_dict(ctx)
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_playing():
-        song_dict.clear()
+        guild_dict.clear()
         voice_client.stop()
     else:
         await ctx.send("The bot is not playing anything at the moment.")
@@ -136,16 +137,18 @@ async def stop(ctx):
 """
 
 
-@bot.command(name='rlist', help='[cmd][sub]')
+@bot.command(name='r/', help='[cmd][sub]')
 async def rlist(ctx, subreddit):
+    guild_dict = await get_guild_dict(ctx)
     data = getreddit.post_data(subreddit, '100')
     filtered_data = json.loads(getreddit.filter_data(data, criteria='youtu'))
     # if len(song_dict) > 0:
     for song in filtered_data:
         # print(song)
-        song_dict[len(song_dict)] = {
+        guild_dict[len(guild_dict)] = {
             'title': filtered_data[song]['title'], 'url': filtered_data[song]['url']}
     print(song_dict)
+    print(guild_dict)
     await play(ctx, by_user=False)
 
 
@@ -160,6 +163,8 @@ async def play(ctx, *terms, by_user=True):
 
     voice_client = ctx.message.guild.voice_client
 
+    guild_dict = await get_guild_dict(ctx)
+
     async with ctx.typing():
 
         # if called by user: url from yt query. else: url from dict
@@ -171,7 +176,7 @@ async def play(ctx, *terms, by_user=True):
                 await ctx.send("No results found for {}".format(*terms))
                 return
         else:
-            url = song_dict[counter['count']]['url']
+            url = guild_dict[counter['count']]['url']
 
         try:
             song = pafy.new(url).getbestaudio()
@@ -180,7 +185,7 @@ async def play(ctx, *terms, by_user=True):
                 await ctx.send("Cannot get streaming data for {}".format(*terms))
             return
 
-        song_dict[len(song_dict)] = {'title': song.title, 'url': url}
+        guild_dict[len(guild_dict)] = {'title': song.title, 'url': url}
 
         try:
             if voice_client.is_playing():
@@ -190,14 +195,15 @@ async def play(ctx, *terms, by_user=True):
             return
 
         try:
-            song_dict[len(song_dict)] = {
+            guild_dict[len(guild_dict)] = {
                 'title': song.title, 'url': url}
         except AttributeError:
             await ctx.send('No song found.')
             return
 
-        song = song_dict[counter['count']]
+        song = guild_dict[counter['count']]
         print(song_dict)
+        print(guild_dict)
         await player(ctx, song['url'], song['title'])
 
 
@@ -205,10 +211,13 @@ async def play(ctx, *terms, by_user=True):
 async def play_next(ctx, msg=None, bot_action=None):
     await asyncio.sleep(2)
     voice_client = ctx.message.guild.voice_client
+    # guild = ctx.guild
+    guild_dict = await get_guild_dict(ctx)
+
     try:
-        song_dict[counter['count'] + 1]
+        guild_dict[counter['count'] + 1]
         counter['count'] += 1
-        song = song_dict[counter['count']]
+        song = guild_dict[counter['count']]
 
         if len(song['url']) < 100:
             song_pafy = pafy.new(song['url']).getbestaudio()
@@ -221,7 +230,7 @@ async def play_next(ctx, msg=None, bot_action=None):
             return
         else:
             await asyncio.sleep(2)
-            song_dict.clear()
+            guild_dict.clear()
             await msg.delete()
             counter['count'] = 0
             return
@@ -234,6 +243,7 @@ async def play_next(ctx, msg=None, bot_action=None):
 @bot.command(name='back', help='Previous song!')
 async def play_prev(ctx, msg=None):
     await asyncio.sleep(2)
+    guild_dict = await get_guild_dict(ctx)
     voice_client = ctx.message.guild.voice_client
     # voice_channel.stop()
     if counter['count'] != 0:
@@ -242,12 +252,56 @@ async def play_prev(ctx, msg=None):
         await ctx.send('This is the first song in the list!')
         return
     try:
-        song = song_dict[counter['count']]
+        song = guild_dict[counter['count']]
     except:
         print('Error, maybe do ExceptKeyError?')
     if msg:
         await msg.delete()
     await player(ctx, song['url'], song['title'])
+
+
+"""
+################################################################################
+#                           --- TEST FUNCTIONS ---                             #
+################################################################################
+"""
+
+
+# @bot.command(name='g1', help='To get the guild info')
+# async def test_guild(ctx):
+#     guild = ctx.guild
+#     print('test1')
+#     msg = await ctx.send(guild.name)
+#     # print(song_dict)
+#     guild_dict[guild.name] = {}
+#     guild_dict[guild.name] = {len(guild_dict[guild.name]): {
+#         'title': 'test', 'url': 'test'}}
+#     print(song_dict)
+#     await msg.delete()
+
+
+# @bot.command(name='g', help='To get the guild info')
+# async def test_guild(ctx):
+#     guild = ctx.guild
+#     print('test2')
+#     msg = await ctx.send(guild.name)
+#     print(guild_dict)
+#     if not guild.name in guild_dict.keys():
+#         guild_dict[guild.name] = {}
+#         guild_dict = guild_dict[guild.name]
+#         guild_dict[guild.name] = {len(guild_dict[guild.name]): {
+#             'title': 'test', 'url': 'test'}}
+#     print(guild_dict)
+#     await msg.delete()
+
+
+async def get_guild_dict(ctx):
+    guild = ctx.guild
+    if not guild.name in song_dict.keys():
+        song_dict[guild.name] = {}
+
+    guild_dict = song_dict[guild.name]
+    return guild_dict
 
 
 bot.run(TOKEN)
