@@ -137,7 +137,7 @@ async def stop(ctx):
 """
 
 
-@bot.command(name='rlist', help='[cmd][sub]')
+@bot.command(name='r/', help='[cmd][sub]')
 async def rlist(ctx, subreddit):
     guild_dict = await get_guild_dict(ctx)
     data = getreddit.post_data(subreddit, '100')
@@ -267,32 +267,32 @@ async def play_prev(ctx, msg=None):
 """
 
 
-@bot.command(name='g1', help='To get the guild info')
-async def test_guild(ctx):
-    guild = ctx.guild
-    print('test1')
-    msg = await ctx.send(guild.name)
-    # print(song_dict)
-    guild_dict[guild.name] = {}
-    guild_dict[guild.name] = {len(guild_dict[guild.name]): {
-        'title': 'test', 'url': 'test'}}
-    print(song_dict)
-    await msg.delete()
+# @bot.command(name='g1', help='To get the guild info')
+# async def test_guild(ctx):
+#     guild = ctx.guild
+#     print('test1')
+#     msg = await ctx.send(guild.name)
+#     # print(song_dict)
+#     guild_dict[guild.name] = {}
+#     guild_dict[guild.name] = {len(guild_dict[guild.name]): {
+#         'title': 'test', 'url': 'test'}}
+#     print(song_dict)
+#     await msg.delete()
 
 
-@bot.command(name='g', help='To get the guild info')
-async def test_guild(ctx):
-    guild = ctx.guild
-    print('test2')
-    msg = await ctx.send(guild.name)
-    print(guild_dict)
-    if not guild.name in guild_dict.keys():
-        guild_dict[guild.name] = {}
-        guild_dict = guild_dict[guild.name]
-        guild_dict[guild.name] = {len(guild_dict[guild.name]): {
-            'title': 'test', 'url': 'test'}}
-    print(guild_dict)
-    await msg.delete()
+# @bot.command(name='g', help='To get the guild info')
+# async def test_guild(ctx):
+#     guild = ctx.guild
+#     print('test2')
+#     msg = await ctx.send(guild.name)
+#     print(guild_dict)
+#     if not guild.name in guild_dict.keys():
+#         guild_dict[guild.name] = {}
+#         guild_dict = guild_dict[guild.name]
+#         guild_dict[guild.name] = {len(guild_dict[guild.name]): {
+#             'title': 'test', 'url': 'test'}}
+#     print(guild_dict)
+#     await msg.delete()
 
 
 async def get_guild_dict(ctx):
