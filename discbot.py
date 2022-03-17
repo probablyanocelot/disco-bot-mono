@@ -143,9 +143,9 @@ async def stop(ctx):
         await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
         return
     guild_dict = await get_guild_dict(ctx)
+    guild_dict.clear()
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_playing():
-        guild_dict.clear()
         voice_client.stop()
     else:
         await ctx.send("The bot is not playing anything at the moment.")
