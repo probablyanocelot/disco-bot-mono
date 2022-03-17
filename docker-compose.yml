@@ -6,6 +6,6 @@ services:
       dockerfile: Dockerfile
     command: "python discbot.py"
     ports:
-      - "50050:5000"
+      - "50051:5000"
     volumes:
       - .:/app
