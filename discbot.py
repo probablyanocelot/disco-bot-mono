@@ -13,9 +13,9 @@ from search_yt import yt_query, YT_API_KEY, get_vid_name
 
 
 # BOT
-intents = discord.Intents.all()
+intents = discord.Intents.all()  # bot-side limiters
 client = discord.Client(intents=intents)
-bot = commands.Bot(command_prefix='$')
+bot = commands.Bot(command_prefix='%')
 song_dict = dict()
 
 
@@ -59,6 +59,15 @@ async def author_in_voice(ctx):
             await channel.connect()
 
 
+async def get_guild_dict(ctx):
+    guild = ctx.guild
+    if not guild.name in song_dict.keys():
+        song_dict[guild.name] = {}
+
+    guild_dict = song_dict[guild.name]
+    return guild_dict
+
+
 async def player(ctx, stream_url, stream_title):
     voice_client = ctx.message.guild.voice_client
     try:
@@ -92,6 +101,9 @@ async def join(ctx):
 
 @bot.command(name='leave', help='To make the bot leave the voice channel')
 async def leave(ctx):
+    if not ctx.message.author.voice:
+        await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
+        return
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_connected():
         await voice_client.disconnect()
@@ -101,6 +113,9 @@ async def leave(ctx):
 
 @bot.command(name='pause', help='This command pauses the song')
 async def pause(ctx, by_user=True):
+    if not ctx.message.author.voice:
+        await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
+        return
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_playing():
         await voice_client.pause()
@@ -112,6 +127,9 @@ async def pause(ctx, by_user=True):
 
 @bot.command(name='resume', help='Resumes the song')
 async def resume(ctx):
+    if not ctx.message.author.voice:
+        await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
+        return
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_paused():
         await voice_client.resume()
@@ -121,6 +139,9 @@ async def resume(ctx):
 
 @bot.command(name='stop', help='Stops the song')
 async def stop(ctx):
+    if not ctx.message.author.voice:
+        await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
+        return
     guild_dict = await get_guild_dict(ctx)
     voice_client = ctx.message.guild.voice_client
     if voice_client.is_playing():
@@ -139,6 +160,9 @@ async def stop(ctx):
 
 @bot.command(name='r/', help='[cmd][sub]')
 async def rlist(ctx, subreddit):
+    if not ctx.message.author.voice:
+        await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
+        return
     guild_dict = await get_guild_dict(ctx)
     data = getreddit.post_data(subreddit, '100')
     filtered_data = json.loads(getreddit.filter_data(data, criteria='youtu'))
@@ -242,6 +266,9 @@ async def play_next(ctx, msg=None, bot_action=None):
 
 @bot.command(name='back', help='Previous song!')
 async def play_prev(ctx, msg=None):
+    if not ctx.message.author.voice:
+        await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
+        return
     await asyncio.sleep(2)
     guild_dict = await get_guild_dict(ctx)
     voice_client = ctx.message.guild.voice_client
@@ -293,15 +320,6 @@ async def play_prev(ctx, msg=None):
 #             'title': 'test', 'url': 'test'}}
 #     print(guild_dict)
 #     await msg.delete()
-
-
-async def get_guild_dict(ctx):
-    guild = ctx.guild
-    if not guild.name in song_dict.keys():
-        song_dict[guild.name] = {}
-
-    guild_dict = song_dict[guild.name]
-    return guild_dict
 
 
 bot.run(TOKEN)
